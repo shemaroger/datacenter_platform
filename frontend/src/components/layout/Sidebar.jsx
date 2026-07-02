@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import { authAPI } from '../../api/endpoints'
+import { canAccess } from '../../config/roles'
 
 const navItems = [
   { to: '/',           label: 'Dashboard',   icon: LayoutDashboard },
@@ -22,6 +23,7 @@ const navItems = [
 export default function Sidebar({ open, onClose }) {
   const navigate    = useNavigate()
   const { user, logout, refreshToken } = useAuthStore()
+  const visibleNavItems = navItems.filter(({ to }) => canAccess(user?.role, to))
 
   const handleLogout = async () => {
     try {
@@ -91,7 +93,7 @@ export default function Sidebar({ open, onClose }) {
             </div>
           )}
           <ul className="space-y-1 px-2">
-            {navItems.map(({ to, label, icon: Icon }) => (
+            {visibleNavItems.map(({ to, label, icon: Icon }) => (
               <li key={to}>
                 <NavLink
                   to={to}
