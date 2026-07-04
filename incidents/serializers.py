@@ -17,7 +17,7 @@ class IncidentCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model  = IncidentComment
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at', 'author']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'author', 'incident']
 
     def create(self, validated_data):
         validated_data['author'] = self.context['request'].user
@@ -31,7 +31,7 @@ class IncidentEscalationSerializer(serializers.ModelSerializer):
     class Meta:
         model  = IncidentEscalation
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'escalated_by']
+        read_only_fields = ['id', 'created_at', 'escalated_by', 'incident']
 
     def create(self, validated_data):
         validated_data['escalated_by'] = self.context['request'].user

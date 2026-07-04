@@ -18,4 +18,10 @@ urlpatterns = [
     # Notification channels
     path('alerts/channels/',                     views.NotificationChannelListCreateView.as_view(), name='channel_list'),
     path('alerts/channels/<int:pk>/',            views.NotificationChannelDetailView.as_view(),     name='channel_detail'),
+
+    # Notifications
+    path('alerts/notifications/',                        views.NotificationListView.as_view(),              name='notification_list'),
+    path('alerts/notifications/unread-count/',            views.NotificationUnreadCountView.as_view(),       name='notification_unread_count'),
+    path('alerts/notifications/<int:pk>/read/',           views.MarkNotificationReadView.as_view(),          name='notification_mark_read'),
+    path('alerts/notifications/mark-all-read/',           views.MarkAllNotificationsReadView.as_view(),      name='notification_mark_all_read'),
 ]

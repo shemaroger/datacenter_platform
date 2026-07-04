@@ -97,6 +97,7 @@ class Notification(models.Model):
     alert      = models.ForeignKey(Alert, on_delete=models.CASCADE, related_name='notifications')
     channel    = models.ForeignKey(NotificationChannel, on_delete=models.CASCADE, related_name='notifications')
     status     = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    is_read    = models.BooleanField(default=False)
     sent_at    = models.DateTimeField(null=True, blank=True)
     error_msg  = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

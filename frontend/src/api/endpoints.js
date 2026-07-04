@@ -49,6 +49,14 @@ export const alertsAPI = {
   createChannel  : (data)     => api.post('/alerts/channels/',        data),
 }
 
+// Notifications
+export const notificationsAPI = {
+  list         : (params) => api.get('/alerts/notifications/',              { params }),
+  unreadCount  : ()       => api.get('/alerts/notifications/unread-count/'),
+  markRead     : (id)     => api.post(`/alerts/notifications/${id}/read/`),
+  markAllRead  : ()       => api.post('/alerts/notifications/mark-all-read/'),
+}
+
 // Incidents
 export const incidentsAPI = {
   summary  : ()           => api.get('/incidents/summary/'),
