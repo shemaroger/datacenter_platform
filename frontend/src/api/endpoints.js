@@ -114,6 +114,12 @@ export const reportsAPI = {
   updateScheduled  : (id, data) => api.patch(`/reports/scheduled/${id}/`,     data),
 }
 
+// Audit
+export const auditAPI = {
+  summary : ()       => api.get('/audit/summary/'),
+  list    : (params) => api.get('/audit/logs/', { params }),
+}
+
 // Compliance
 export const complianceAPI = {
   summary         : ()           => api.get('/compliance/summary/'),
