@@ -5,7 +5,7 @@ import socket
 import platform
 from datetime import datetime
 
-API_URL   = "http://192.168.252.1:8000/api"
+API_URL   = "http://192.168.64.1:8000/api"
 USERNAME  = "admin"
 PASSWORD  = "Test@123"
 INTERVAL  = 30
@@ -23,7 +23,7 @@ def get_token():
 def get_real_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(('192.168.252.1', 80))
+        s.connect(('192.168.64.1', 80))
         return s.getsockname()[0]
     except Exception:
         return '127.0.0.1'
