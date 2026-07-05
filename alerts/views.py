@@ -117,3 +117,45 @@ class NotificationChannelDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return NotificationChannel.objects.filter(user=self.request.user)
+
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class   = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset  = Notification.objects.filter(channel__user=self.request.user)
+        is_read   = self.request.query_params.get('is_read')
+        if is_read is not None:
+            queryset = queryset.filter(is_read=is_read.lower() == 'true')
+        return queryset[:50]
+
+
+class NotificationUnreadCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(channel__user=request.user, is_read=False).count()
+        return Response({'unread': count})
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notification = Notification.objects.get(pk=pk, channel__user=request.user)
+        except Notification.DoesNotExist:
+            return Response({'detail': 'Notification not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        notification.is_read = True
+        notification.save()
+        return Response(NotificationSerializer(notification).data)
+
+
+class MarkAllNotificationsReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(channel__user=request.user, is_read=False).update(is_read=True)
+        return Response({'detail': 'All notifications marked as read.'})

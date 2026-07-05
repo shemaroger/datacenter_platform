@@ -49,6 +49,14 @@ export const alertsAPI = {
   createChannel  : (data)     => api.post('/alerts/channels/',        data),
 }
 
+// Notifications
+export const notificationsAPI = {
+  list         : (params) => api.get('/alerts/notifications/',              { params }),
+  unreadCount  : ()       => api.get('/alerts/notifications/unread-count/'),
+  markRead     : (id)     => api.post(`/alerts/notifications/${id}/read/`),
+  markAllRead  : ()       => api.post('/alerts/notifications/mark-all-read/'),
+}
+
 // Incidents
 export const incidentsAPI = {
   summary  : ()           => api.get('/incidents/summary/'),
@@ -104,6 +112,12 @@ export const reportsAPI = {
   scheduled        : ()         => api.get('/reports/scheduled/'),
   createScheduled  : (data)     => api.post('/reports/scheduled/',            data),
   updateScheduled  : (id, data) => api.patch(`/reports/scheduled/${id}/`,     data),
+}
+
+// Audit
+export const auditAPI = {
+  summary : ()       => api.get('/audit/summary/'),
+  list    : (params) => api.get('/audit/logs/', { params }),
 }
 
 // Compliance

@@ -3,9 +3,11 @@ import {
   FileText, Search, RefreshCw, Eye, X,
   ChevronLeft, ChevronRight, Plus, Download,
   CheckCircle, XCircle, Clock, Shield,
-  Activity, Cpu, BarChart2, Calendar
+  Activity, Cpu, BarChart2, Calendar, ScrollText
 } from 'lucide-react'
 import { reportsAPI } from '../../api/endpoints'
+import useAuthStore from '../../store/authStore'
+import AuditLogsTab from './AuditLogsTab'
 
 const ITEMS_PER_PAGE = 10
 
@@ -518,6 +520,9 @@ const ReportsPage = () => {
   const [totalItems,       setTotalItems]       = useState(0)
   const [successMsg,       setSuccessMsg]       = useState('')
   const [errorMsg,         setErrorMsg]         = useState('')
+  const [activeTab,        setActiveTab]        = useState('reports')
+  const role = useAuthStore((s) => s.user?.role)
+  const canViewAuditLogs = role === 'admin' || role === 'auditor'
 
   const flash = (msg, isError = false) => {
     if (isError) { setErrorMsg(msg);   setTimeout(() => setErrorMsg(''),   4000) }
@@ -679,6 +684,27 @@ const ReportsPage = () => {
         </div>
       </div>
 
+      {canViewAuditLogs && (
+        <div className="flex gap-2 border-b border-gray-200">
+          <button onClick={() => setActiveTab('reports')}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'reports' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}>
+            <FileText size={16} /> Reports
+          </button>
+          <button onClick={() => setActiveTab('audit')}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'audit' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}>
+            <ScrollText size={16} /> Audit Logs
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'audit' && canViewAuditLogs ? (
+        <AuditLogsTab />
+      ) : (
+      <>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatsCard title="Total reports" value={summary.total}     icon={FileText}    color="gray"   />
         <StatsCard title="Completed"     value={summary.completed} icon={CheckCircle} color="green"  />
@@ -854,6 +880,8 @@ const ReportsPage = () => {
             ))}
           </div>
         </div>
+      )}
+      </>
       )}
 
       {selected && (

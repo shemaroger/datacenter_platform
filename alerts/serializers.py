@@ -38,7 +38,12 @@ class NotificationChannelSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    alert_message = serializers.CharField(source='alert.message', read_only=True)
+    alert_severity = serializers.CharField(source='alert.severity', read_only=True)
+    server_name    = serializers.CharField(source='alert.server.name', read_only=True)
+    channel_type   = serializers.CharField(source='channel.channel_type', read_only=True)
+
     class Meta:
         model  = Notification
         fields = '__all__'
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'alert', 'channel', 'status', 'sent_at', 'error_msg']

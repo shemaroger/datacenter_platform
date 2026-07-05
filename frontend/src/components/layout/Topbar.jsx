@@ -1,6 +1,7 @@
-import { Menu, Bell, Search, RefreshCw } from 'lucide-react'
+import { Menu, Search, RefreshCw } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
+import NotificationBell from './NotificationBell'
 
 const pageTitles = {
   '/'           : 'Dashboard',
@@ -69,14 +70,7 @@ export default function Topbar({ onMenuClick }) {
         </button>
 
         {/* Notifications */}
-        <button
-          className="relative p-2 rounded-xl transition-colors hover:bg-gray-100"
-          style={{ color: '#3D3D3D' }}>
-          <Bell size={18} />
-          <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-            style={{ background: '#C0272D' }} />
-        </button>
+        <NotificationBell />
 
         {/* Avatar */}
         <div
