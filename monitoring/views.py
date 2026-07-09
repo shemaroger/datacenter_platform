@@ -45,8 +45,13 @@ class MetricSnapshotListCreateView(generics.ListCreateAPIView):
         )
 
     def perform_create(self, serializer):
+        from alerts.services import evaluate_snapshot
+        from analytics.services import process_snapshot
+
         server_id = self.kwargs.get('server_id')
-        serializer.save(server_id=server_id)
+        snapshot  = serializer.save(server_id=server_id)
+        evaluate_snapshot(snapshot)
+        process_snapshot(snapshot)
 
 
 class ServerStatsView(APIView):

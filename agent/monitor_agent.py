@@ -148,6 +148,7 @@ def push_metrics(token, server_id, metrics):
         headers={"Authorization": f"Bearer {token}"},
         timeout=10,
     )
+    r.raise_for_status()
     return r.status_code
 
 

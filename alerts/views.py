@@ -8,6 +8,7 @@ from .serializers import (
     AlertRuleSerializer, AlertSerializer,
     NotificationChannelSerializer, NotificationSerializer
 )
+from .services import notify_alert
 
 
 class AlertRuleListCreateView(generics.ListCreateAPIView):
@@ -68,6 +69,7 @@ class AcknowledgeAlertView(APIView):
         alert.acknowledged_by = request.user
         alert.acknowledged_at = timezone.now()
         alert.save()
+        notify_alert(alert, event='acknowledged')
         return Response(AlertSerializer(alert).data)
 
 
@@ -83,6 +85,7 @@ class ResolveAlertView(APIView):
         alert.status      = Alert.Status.RESOLVED
         alert.resolved_at = timezone.now()
         alert.save()
+        notify_alert(alert, event='resolved')
         return Response(AlertSerializer(alert).data)
 
 
