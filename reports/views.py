@@ -10,6 +10,13 @@ import csv
 import io
 import os
 import logging
+from datetime import datetime
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 
 from .models import Report, ScheduledReport
 from .serializers import ReportSerializer, ScheduledReportSerializer
@@ -19,6 +26,8 @@ from incidents.models import Incident
 from automation.models import AutomationTask
 
 logger = logging.getLogger(__name__)
+
+LOGO_PATH = os.path.join(settings.BASE_DIR, 'frontend', 'public', 'images', 'logo-dark-1.png')
 
 
 def generate_report_data(report):
@@ -175,6 +184,175 @@ def generate_report_data(report):
     return data
 
 
+BRAND_RED  = colors.HexColor('#C0272D')
+GRAY_TEXT  = colors.HexColor('#9B9B9B')
+GRAY_BG    = colors.HexColor('#F5F5F5')
+DARK_TEXT  = colors.HexColor('#1A1A1A')
+BORDER     = colors.HexColor('#E0E0E0')
+
+
+def _fmt_date(value):
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value) if isinstance(value, str) else value
+        return dt.strftime('%d %b %Y')
+    except (ValueError, TypeError):
+        return str(value)
+
+
+def _red_bar(width, height=0.2*cm):
+    bar = Table([['']], colWidths=[width], rowHeights=[height])
+    bar.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), BRAND_RED)]))
+    return bar
+
+
+def _build_pdf(report, report_data):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        topMargin=1*cm, bottomMargin=1*cm, leftMargin=2*cm, rightMargin=2*cm,
+    )
+    styles = getSampleStyleSheet()
+    content_width = A4[0] - 4*cm
+
+    brand_name_style = ParagraphStyle('BrandName', parent=styles['Normal'], fontSize=14, textColor=BRAND_RED, fontName='Helvetica-Bold', leading=16)
+    brand_tag_style  = ParagraphStyle('BrandTag', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT)
+    title_style      = ParagraphStyle('ReportTitle', parent=styles['Normal'], fontSize=15, leading=18, spaceAfter=4, textColor=DARK_TEXT, fontName='Helvetica-Bold', alignment=2)
+    type_style       = ParagraphStyle('ReportTypeLabel', parent=styles['Normal'], fontSize=9, leading=11, textColor=GRAY_TEXT, alignment=2)
+    label_style      = ParagraphStyle('FieldLabel', parent=styles['Normal'], fontSize=7, textColor=GRAY_TEXT, fontName='Helvetica-Bold')
+    value_style      = ParagraphStyle('FieldValue', parent=styles['Normal'], fontSize=10, textColor=DARK_TEXT, fontName='Helvetica-Bold')
+    heading_style    = ParagraphStyle('SectionHeading', parent=styles['Normal'], fontSize=10, textColor=BRAND_RED, fontName='Helvetica-Bold', spaceBefore=14, spaceAfter=6)
+    footer_style     = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=GRAY_TEXT)
+
+    report_no = f"RPT-{report.id:04d}"
+    approved_by = "System Admin"
+    date_from = _fmt_date(report_data.get('date_from'))
+    date_to   = _fmt_date(report_data.get('date_to'))
+    period = f"{date_from} — {date_to}" if date_from and date_to else (date_from or "All time")
+
+    elements = [_red_bar(content_width)]
+
+    # --- brand header row ---
+    brand_block = [Paragraph('RSwitch', brand_name_style), Paragraph('money 24/7 &nbsp;&middot;&nbsp; DataCenter Platform', brand_tag_style)]
+    title_block = [Paragraph(report.title, title_style), Paragraph(f"Type: {report_data.get('report_type', '').title()}", type_style)]
+
+    if os.path.exists(LOGO_PATH):
+        logo = Image(LOGO_PATH, width=1.4*cm, height=1.04*cm)
+        left_cell = Table([[logo, brand_block]], colWidths=[1.7*cm, 5*cm])
+        left_cell.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('LEFTPADDING', (0, 0), (-1, -1), 0), ('TOPPADDING', (0, 0), (-1, -1), 0), ('BOTTOMPADDING', (0, 0), (-1, -1), 0)]))
+    else:
+        left_cell = brand_block
+
+    header = Table([[left_cell, title_block]], colWidths=[content_width - 8*cm, 8*cm])
+    header.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 14), ('BOTTOMPADDING', (0, 0), (-1, -1), 14),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('LINEBELOW', (0, 0), (-1, -1), 1.5, BRAND_RED),
+    ]))
+    elements.append(header)
+
+    # --- info strip ---
+    info_fields = [
+        ('REPORT NO.', report_no),
+        ('CREATED BY', report_data.get('generated_by', 'system')),
+        ('APPROVED BY', approved_by),
+        ('DATE', _fmt_date(report_data.get('generated_at')) or '—'),
+        ('PERIOD', period),
+    ]
+    info_row = [[Paragraph(label, label_style) for label, _ in info_fields]]
+    info_row.append([Paragraph(value, value_style) for _, value in info_fields])
+    info_table = Table(info_row, colWidths=[content_width/5]*5)
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), GRAY_BG),
+        ('LINEAFTER', (0, 0), (-2, -1), 0.5, BORDER),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10), ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 10), ('BOTTOMPADDING', (1, 0), (-1, 0), 2),
+        ('TOPPADDING', (0, 1), (-1, 1), 2), ('BOTTOMPADDING', (0, 1), (-1, 1), 10),
+        ('LINEBELOW', (0, -1), (-1, -1), 0.5, BORDER),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 0.6*cm))
+
+    # --- summary ---
+    summary = report_data.get('summary', {})
+    if summary:
+        elements.append(Paragraph('SUMMARY', heading_style))
+        summary_rows = [[key.replace('_', ' ').title(), str(value)] for key, value in summary.items()]
+        table = Table(summary_rows, colWidths=[content_width/2]*2)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), GRAY_BG),
+            ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(table)
+
+    # --- details ---
+    details = report_data.get('details', [])
+    if details:
+        elements.append(Paragraph(f'DETAILS ({len(details)} records)', heading_style))
+        headers = list(details[0].keys())
+        cell_style = ParagraphStyle('Cell', parent=styles['Normal'], fontSize=7.5, leading=9)
+        header_style = ParagraphStyle('CellHeader', parent=cell_style, textColor=colors.white, fontName='Helvetica-Bold')
+
+        rows = [[Paragraph(h.replace('_', ' ').title(), header_style) for h in headers]]
+        for row in details:
+            rows.append([Paragraph(str(row.get(h, '—')), cell_style) for h in headers])
+
+        col_width = content_width / len(headers)
+        table = Table(rows, colWidths=[col_width] * len(headers), repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), BRAND_RED),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, GRAY_BG]),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        elements.append(table)
+
+    # --- signatures ---
+    elements.append(Paragraph('SIGNATURES', heading_style))
+    prepared_by = report_data.get('generated_by', 'system')
+    prepared_date = _fmt_date(report_data.get('generated_at')) or '—'
+    sig_cells = [
+        [Paragraph('PREPARED BY', label_style), Paragraph('REVIEWED BY', label_style), Paragraph('APPROVED BY', label_style)],
+        [Paragraph(prepared_by, value_style), Paragraph('_' * 24, styles['Normal']), Paragraph('_' * 24, styles['Normal'])],
+        [Paragraph(prepared_date, footer_style), Paragraph('Date: _______________', footer_style), Paragraph('Date: _______________', footer_style)],
+    ]
+    sig_table = Table(sig_cells, colWidths=[content_width/3]*3)
+    sig_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), GRAY_BG),
+        ('LINEAFTER', (0, 0), (-2, -1), 0.5, BORDER),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12), ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(sig_table)
+    elements.append(Spacer(1, 0.8*cm))
+
+    # --- footer ---
+    footer = Table([[
+        Paragraph(f"RSwitch DataCenter Platform &nbsp;&middot;&nbsp; money 24/7 &nbsp;&middot;&nbsp; {report_no} &nbsp;&middot;&nbsp; Confidential", footer_style),
+        Paragraph(_fmt_date(report_data.get('generated_at')) or '—', ParagraphStyle('FooterRight', parent=footer_style, alignment=2)),
+    ]], colWidths=[content_width/2]*2)
+    footer.setStyle(TableStyle([
+        ('LINEABOVE', (0, 0), (-1, -1), 0.5, BORDER),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(footer)
+    elements.append(Spacer(1, 0.3*cm))
+    elements.append(_red_bar(content_width))
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
 class ReportListCreateView(generics.ListCreateAPIView):
     serializer_class = ReportSerializer
     permission_classes = [IsAuthenticated]
@@ -313,7 +491,13 @@ class DownloadReportView(APIView):
                 response['Content-Disposition'] = f'attachment; filename="{report.title.replace(" ", "_")}.csv"'
                 return response
 
-            else:  # json format (including PDF fallback)
+            elif report.format == 'pdf':
+                pdf_buffer = _build_pdf(report, report_data)
+                response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{report.title.replace(" ", "_")}.pdf"'
+                return response
+
+            else:  # json format
                 response = HttpResponse(
                     json.dumps(report_data, indent=2),
                     content_type='application/json'
